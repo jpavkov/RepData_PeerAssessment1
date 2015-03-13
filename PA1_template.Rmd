@@ -1,25 +1,124 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+Peer Assessment 1
+=================
 
 
-## Loading and preprocessing the data
+**Loading and preprocessing the data**
+
+1. Load the data (i.e. read.csv())
+2. Process/transform the data (if necessary) into a format suitable for your analysis
+
+```{r, echo=TRUE}
+library("data.table")
+setwd("C:/Users/pavkoj1/Desktop/Coursera/05 Reproducible Research/PeerAssessment_01")
+dt <- data.table(read.csv("activity.csv"))
+dt$date <- as.Date(dt$date)
+str(dt)
+dt
+```
+
+
+**What is mean total number of steps taken per day?**
+
+For this part of the assignment, you can ignore the missing values in the dataset.
+
+1. Calculate the total number of steps taken per day
+2. If you do not understand the difference between a histogram and a barplot, research the difference between them. Make a histogram of the total number of steps taken each day
+3. Calculate and report the mean and median of the total number of steps taken per day
+
+```{r, echo=TRUE}
+library("ggplot2")
+dt.steps <- dt[,.(steps=sum(steps, na.rm=TRUE)),by=c("date")]
+
+p <- ggplot() +
+  geom_histogram(data=dt.steps, aes(x=steps, fill = ..count..), binwidth = 2000) +
+  ggtitle("Distribution of Steps Taken")
+p
+mean(dt.steps$steps, na.rm=TRUE)
+median(dt.steps$steps, na.rm=TRUE)
+```
+
+
+**What is the average daily activity pattern?**
+
+1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r, echo=TRUE}
+dt.ts <- dt[,.(steps=mean(steps, na.rm=TRUE)), by=c("interval")]
+p <- ggplot() +
+  geom_line(data=dt.ts, aes(x=interval, y=steps), stat="identity") +
+  ggtitle("Number of Steps Taken by Interval")
+p
+max_steps <- dt.ts[,max(steps)]
+max_interval <- dt.ts[steps==max_steps,interval]
+```
+The maximum average steps taken is `r round(max_steps, 1)`, and it is on the `r max_interval` minute interval.
+
+
+**Imputing missing values**
+
+1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+```{r, echo=TRUE}
+
+missing_vals <- nrow(dt) - nrow(na.omit(dt))
+
+# use na
+library("zoo")
+x <- na.approx(dt$steps, 1:nrow(dt), na.rm=FALSE)
+x[is.na(x)] <- 0
+dt[,steps2:=x]
+
+dt.ts2 <- dt[,.(steps2=mean(steps2)), by=c("interval")]
+
+p <- ggplot() +
+  geom_line(data=dt.ts2, aes(x=interval, y=steps2), stat="identity") +
+  ggtitle("Number of Steps Taken by Interval")
+p
+
+max_steps <- dt.ts[,max(steps)]
+max_interval <- dt.ts[steps==max_steps,interval]
+
+max_steps2 <- dt.ts2[,max(steps2)]
+max_interval2 <- dt.ts2[steps2==max_steps2,interval]
+
+```
+
+I filled in the missing data using the zoo package, specifically na.approx. It changed the max step average from `r round(max_steps,1)` to `r round(max_steps2,1)`. The interval of the max average steps stayed consistant at `r max_interval`.
+
+**Are there differences in activity patterns between weekdays and weekends?**
+
+1. Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
+
+```{r, echo=TRUE}
+library("lubridate")
+dt[,wday:=wday(date)]
+dt[wday %in% c(1,7),day_type:=as.factor("weekend")]
+dt[wday %in% c(2,3,4,5,6),day_type:=as.factor("weekday")]
+dt.wday <- dt[,.(steps=mean(steps, na.rm=TRUE)), by=c("day_type","interval")]
+p <- ggplot() +
+  geom_line(data=dt.wday, aes(x=interval, y=steps), stat="identity") +
+  facet_grid(day_type ~ .) +
+  ggtitle("Number of Steps Taken by Interval")
+p
+
+```
 
 
 
-## What is mean total number of steps taken per day?
 
 
 
-## What is the average daily activity pattern?
 
 
 
-## Imputing missing values
 
 
 
-## Are there differences in activity patterns between weekdays and weekends?
+
+
+
